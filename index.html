@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulasi Antrian (Queue)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Pacifico&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #fbcfe8 0%, #e9d5ff 100%);
+            color: #581c87;
+            overflow-x: hidden;
+        }
+        #main-title {
+            font-family: 'Pacifico', cursive;
+        }
+        .confetti {
+            position: absolute; width: 8px; height: 16px; background: #f00;
+            top: 0; opacity: 1; animation: confetti-fall 3s ease-out forwards;
+        }
+        @keyframes confetti-fall {
+            0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+        }
+        .team-member img {
+            border: 4px solid white;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            transition: transform 0.3s ease;
+        }
+        .team-member:hover img {
+            transform: scale(1.1);
+        }
+        .card, .panel {
+             background-color: rgba(255, 255, 255, 0.7);
+             backdrop-filter: blur(10px);
+             border-radius: 1.5rem;
+             box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
+             border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .card.dragging {
+            opacity: 0.6;
+            transform: scale(0.95);
+        }
+        #antrian-visual.drag-over {
+            border-style: dashed;
+            border-color: #c026d3;
+            background-color: rgba(250, 232, 255, 0.8);
+        }
+        .decorative-element {
+            position: absolute;
+            z-index: -1;
+            opacity: 0.8;
+            animation: float 20s ease-in-out infinite;
+        }
+        .cloud1 { top: 10%; left: -5%; width: 200px; animation-duration: 40s; }
+        .cloud2 { top: 25%; right: -8%; width: 250px; animation-duration: 50s; }
+        .flower1 { bottom: -5%; left: 5%; width: 150px; opacity: 0.5; animation-duration: 30s; }
+        .flower2 { bottom: -2%; right: 2%; width: 120px; opacity: 0.6; animation-duration: 35s; }
+        @keyframes float {
+            0% { transform: translateY(0px) translateX(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) translateX(10px) rotate(5deg); }
+            100% { transform: translateY(0px) translateX(0px) rotate(0deg); }
+        }
+        .step-card {
+            display: flex; align-items: center; background-color: #fff;
+            padding: 1rem; border-radius: 0.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06);
+            border-left: 5px solid;
+        }
+        .step-enqueue { border-color: #db2777; }
+        .step-dequeue { border-color: #9333ea; }
+        .queue-snapshot {
+            display: flex; flex-wrap: wrap; gap: 0.5rem;
+            margin-top: 0.5rem; padding: 0.5rem;
+            background-color: #f8fafc; border-radius: 0.5rem;
+        }
+        .queue-item {
+            padding: 0.25rem 0.75rem; border-radius: 9999px;
+            font-weight: 500; background-color: #e2e8f0; color: #475569;
+            position: relative;
+        }
+        .front-label, .rear-label {
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: #fff;
+            padding: 0.1rem 0.4rem;
+            border-radius: 0.25rem;
+            position: absolute;
+            top: -10px;
+        }
+        .front-label { background-color: #9333ea; left: 0; }
+        .rear-label { background-color: #db2777; right: 0; }
+    </style>
+</head>
+<body class="p-4 sm:p-6 md:p-8">
+    <!-- Elemen Dekoratif -->
+    <div class="fixed top-0 left-0 w-full h-full -z-10 overflow-hidden">
+        <svg class="decorative-element cloud1" viewBox="0 0 200 100" fill="#fff" xmlns="http://www.w3.org/2000/svg"><path d="M172.5 50C172.5 26.5 152.5 5 127.5 5C107.5 5 90 20 85 40C82.5 37.5 77.5 35 72.5 35C60 35 50 45 50 57.5C50 60 50 70 50 70C22.5 70 0 92.5 0 120C0 147.5 22.5 170 50 170H150C177.5 170 200 147.5 200 120C200 92.5 180 67.5 172.5 50Z" transform="translate(0 -70)" opacity="0.6"/></svg>
+        <svg class="decorative-element cloud2" viewBox="0 0 200 100" fill="#fff" xmlns="http://www.w3.org/2000/svg"><path d="M172.5 50C172.5 26.5 152.5 5 127.5 5C107.5 5 90 20 85 40C82.5 37.5 77.5 35 72.5 35C60 35 50 45 50 57.5C50 60 50 70 50 70C22.5 70 0 92.5 0 120C0 147.5 22.5 170 50 170H150C177.5 170 200 147.5 200 120C200 92.5 180 67.5 172.5 50Z" transform="translate(0 -70)" opacity="0.5"/></svg>
+        <svg class="decorative-element flower1" viewBox="0 0 100 100" fill="#f472b6" xmlns="http://www.w3.org/2000/svg"><path d="M50 0C65 0 70 15 70 15C70 15 85 20 85 35C85 50 70 50 70 50C70 50 65 65 50 65C35 65 30 50 30 50C30 50 15 50 15 35C15 20 30 15 30 15C30 15 35 0 50 0Z" transform="rotate(20 50 50)"/><circle cx="50" cy="50" r="10" fill="#fde047"/></svg>
+        <svg class="decorative-element flower2" viewBox="0 0 100 100" fill="#c084fc" xmlns="http://www.w3.org/2000/svg"><path d="M50 0C65 0 70 15 70 15C70 15 85 20 85 35C85 50 70 50 70 50C70 50 65 65 50 65C35 65 30 50 30 50C30 50 15 50 15 35C15 20 30 15 30 15C30 15 35 0 50 0Z" transform="rotate(-15 50 50)"/><circle cx="50" cy="50" r="8" fill="#fff"/></svg>
+    </div>
+
+    <div id="app" class="max-w-7xl mx-auto relative z-10">
+        <!-- Header -->
+        <header class="text-center mb-6 p-6 panel">
+            <h1 id="main-title" class="text-4xl sm:text-5xl font-bold text-fuchsia-800">Dashboard Presentasi</h1>
+            <p id="main-subtitle" class="text-purple-600 mt-2">Simulasi Antrian (FIFO) dengan Batas Maksimal</p>
+        </header>
+
+        <!-- Bagian Tim Kami -->
+        <section id="team-section" class="mb-8 panel p-6">
+             <h2 class="text-3xl font-bold text-center mb-2 text-fuchsia-700" style="font-family: 'Pacifico', cursive;">Struktur Data</h2>
+             <h3 class="text-xl font-semibold text-center -mt-2 mb-8 text-pink-500">Kelompok 2 - PSIK24A</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
+                <div class="team-member text-center">
+                    <img src="images/rosa.jpg" alt="Foto Rosa" class="w-24 h-24 rounded-full mx-auto mb-2 object-cover">
+                    <h3 class="font-semibold text-slate-800">Rosa</h3>
+                    <p class="text-xs text-pink-500 italic mt-1">"Sang Konseptor Utama"</p>
+                </div>
+                <div class="team-member text-center">
+                    <img src="images/tia.jpg" alt="Foto Tia" class="w-24 h-24 rounded-full mx-auto mb-2 object-cover">
+                    <h3 class="font-semibold text-slate-800">Tia</h3>
+                    <p class="text-xs text-pink-500 italic mt-1">"Pakar Heboh & Pemicu Semangat"</p>
+                </div>
+                <div class="team-member text-center">
+                    <img src="images/frengky.jpg" alt="Foto Frengky" class="w-24 h-24 rounded-full mx-auto mb-2 object-cover">
+                    <h3 class="font-semibold text-slate-800">Frengky</h3>
+                    <p class="text-xs text-pink-500 italic mt-1">"Pasukan Pendukung Serbaguna"</p>
+                </div>
+                <div class="team-member text-center">
+                    <img src="images/riski.jpg" alt="Foto Riski" class="w-24 h-24 rounded-full mx-auto mb-2 object-cover">
+                    <h3 class="font-semibold text-slate-800">Riski</h3>
+                    <p class="text-xs text-pink-500 italic mt-1">"Eksekutor Senyap Penuh Kejutan"</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Content -->
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div id="daftar-kelompok-container" class="panel p-4">
+                <h2 class="text-xl font-bold mb-4 border-b border-pink-200 pb-2">👥 Daftar Kelompok Siap</h2>
+                <p class="text-xs text-slate-400 mb-3 italic">Seret kelompok dan lepaskan ke area antrian.</p>
+                <div id="daftar-kelompok" class="space-y-3 min-h-[200px]"></div>
+            </div>
+            <div id="antrian-container" class="panel p-4">
+                <div class="flex justify-between items-center border-b border-pink-200 pb-2 mb-4">
+                    <h2 id="queue-title" class="text-xl font-bold">🚀 Antrian Presentasi</h2>
+                    <span id="queue-counter" class="text-sm font-bold bg-pink-200 text-pink-800 px-3 py-1 rounded-full">0 / 5</span>
+                </div>
+                <div id="antrian-visual" class="space-y-3 min-h-[400px] bg-white/50 p-3 rounded-2xl border-2 border-transparent transition-all"></div>
+                <div class="mt-4 flex flex-col sm:flex-row gap-2">
+                    <button id="btn-dequeue" class="flex-1 bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-4 rounded-full transition-transform transform hover:scale-105 shadow-lg">Panggil Berikutnya</button>
+                    <button id="btn-peek" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-full transition-transform transform hover:scale-105 shadow-lg">Intip Selanjutnya</button>
+                </div>
+                 <div class="mt-2">
+                    <button id="btn-reset" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full transition-transform transform hover:scale-105 shadow-lg">Reset Simulasi</button>
+                </div>
+            </div>
+            <div id="log-container" class="panel p-4">
+                <h2 class="text-xl font-bold mb-4 border-b border-pink-200 pb-2">📜 Catatan Aktivitas</h2>
+                <div id="log-aktivitas" class="space-y-2 text-sm"></div>
+            </div>
+        </main>
+        
+        <!-- Visualisasi Tahapan dan Kaitan Materi digabung -->
+        <section class="mt-8 panel p-6">
+            <h2 class="text-3xl font-bold text-center mb-6 text-fuchsia-700" style="font-family: 'Pacifico', cursive;">Jejak Langkah Simulasi</h2>
+            <div id="tahapan-container" class="space-y-4 mb-8"></div>
+            <div class="border-t border-pink-200 pt-6">
+                 <h3 class="text-2xl font-bold text-center mb-4 text-fuchsia-700" style="font-family: 'Pacifico', cursive;">Prinsip Dasar Antrian</h3>
+                <div class="text-slate-600 text-center max-w-3xl mx-auto space-y-2 text-sm">
+                    <p>Program ini bekerja berdasarkan dua operasi dasar dari sebuah Antrian (Queue):</p>
+                    <ul class="list-disc list-inside space-y-2 inline-block text-left mt-2">
+                        <li><strong>ENQUEUE (Masuk Antrian):</strong> Proses menambahkan data baru selalu di posisi paling belakang, yang ditunjuk oleh <strong>REAR</strong>.</li>
+                        <li><strong>DEQUEUE (Keluar Antrian):</strong> Proses mengambil data selalu dari posisi paling depan, yang ditunjuk oleh <strong>FRONT</strong>.</li>
+                    </ul>
+                    <p class="mt-4">Kombinasi kedua operasi ini menciptakan prinsip <strong>FIFO (First-In, First-Out)</strong>, di mana yang pertama masuk adalah yang pertama keluar.</p>
+                </div>
+            </div>
+        </section>
+    </div>
+    
+    <!-- Modal untuk Peringatan -->
+    <div id="warning-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-xl p-8 text-center max-w-sm w-full panel">
+            <div class="text-5xl mb-4">✋</div>
+            <h3 class="text-2xl font-bold mb-2 text-red-600">Antrian Penuh!</h3>
+            <p id="warning-content" class="mb-6 text-slate-600">Kapasitas antrian (5 kelompok) sudah tercapai. Harap panggil kelompok berikutnya (Dequeue) untuk memberi ruang.</p>
+            <button id="btn-close-modal" class="bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-6 rounded-full">Mengerti</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const MAX_QUEUE_SIZE = 5;
+            const semuaKelompok = [
+                { id: 1, nama: "Tim Aritmatika", anggota: ["Rosa", "Frengky", "Tia", "Riski"], judul: "Analisis Efisiensi Algoritma" },
+                { id: 2, nama: "Tim Logic", anggota: ["Angel", "Nuri", "Repi", "Mika"], judul: "Implementasi Struktur Data Tree" },
+                { id: 3, nama: "Tim Data", anggota: ["Fahmi", "Maulana", "Nopal", "Paskal"], judul: "Studi Kasus Penggunaan Linked List" },
+                { id: 4, nama: "Tim Sintaks", anggota: ["Sirlia", "Maysi", "Nazwa", "Juli"], judul: "Penerapan Stack untuk Validasi" },
+                { id: 5, nama: "Tim Algoritma", anggota: ["Kayla", "Sahara", "Dinda", "Maria"], judul: "Visualisasi Algoritma Sorting" },
+                { id: 6, nama: "Tim Jaringan", anggota: ["Rafif", "Rifqi", "Rayhan", "Arung"], judul: "Simulasi Antrian Paket Data" },
+                { id: 7, nama: "Tim Keamanan", anggota: ["Raja", "Hafip", "Farrel", "Farzad"], judul: "Analisis Antrian pada Firewall" }
+            ];
+
+            let antrian = []; 
+            let logs = [];
+            let tahapan = [];
+            let draggedItemId = null;
+
+            const daftarKelompokEl = document.getElementById('daftar-kelompok');
+            const antrianVisualEl = document.getElementById('antrian-visual');
+            const logAktivitasEl = document.getElementById('log-aktivitas');
+            const tahapanContainerEl = document.getElementById('tahapan-container');
+            const btnDequeue = document.getElementById('btn-dequeue');
+            const btnPeek = document.getElementById('btn-peek');
+            const btnReset = document.getElementById('btn-reset');
+            const queueCounterEl = document.getElementById('queue-counter');
+            const warningModal = document.getElementById('warning-modal');
+            const btnCloseModal = document.getElementById('btn-close-modal');
+
+            const enqueue = (kelompokId) => {
+                // Operasi Penuh: Cek apakah antrian sudah penuh
+                if (antrian.length >= MAX_QUEUE_SIZE) {
+                    warningModal.classList.remove('hidden');
+                    warningModal.classList.add('flex');
+                    tambahLog(`ENQUEUE GAGAL: Antrian penuh.`, 'red');
+                    return; // Hentikan fungsi
+                }
+
+                const kelompok = semuaKelompok.find(k => k.id === kelompokId);
+                if (kelompok && !antrian.find(k => k.id === kelompokId)) {
+                    const aksi = 'ENQUEUE';
+                    const deskripsi = `Kelompok <strong>${kelompok.nama}</strong> masuk di posisi REAR (belakang).`;
+                    
+                    antrian.push(kelompok);
+                    tambahLog(`ENQUEUE: Menambah '${kelompok.nama}' di REAR.`, 'green');
+                    
+                    tahapan.push({ aksi, deskripsi, antrianSaatIni: [...antrian] });
+                    render();
+                }
+            };
+
+            const dequeue = () => {
+                // Operasi Kosong: Cek apakah ada yg bisa dikeluarkan
+                if (antrian.length > 0) {
+                    const kelompokSelesai = antrian.shift();
+                    const aksi = 'DEQUEUE';
+                    const deskripsi = `Kelompok <strong>${kelompokSelesai.nama}</strong> keluar dari posisi FRONT.`;
+                    
+                    tambahLog(`DEQUEUE: Mengambil '${kelompokSelesai.nama}' dari FRONT.`, 'purple');
+                    tahapan.push({ aksi, deskripsi, antrianSaatIni: [...antrian] });
+                    triggerConfetti();
+                    render();
+                } else {
+                    tambahLog('DEQUEUE GAGAL: Antrian sudah kosong.', 'red');
+                }
+            };
+
+            const peek = () => {
+                if (antrian.length > 0) {
+                    const kelompokDepan = antrian[0];
+                    alert(`Berikutnya (di posisi FRONT): ${kelompokDepan.nama}`);
+                    tambahLog(`PEEK: Mengecek posisi FRONT: '${kelompokDepan.nama}'.`, 'gray');
+                } else {
+                    alert('Antrian kosong!');
+                    tambahLog('PEEK GAGAL: Antrian kosong.', 'yellow');
+                }
+            };
+            
+            const resetSimulasi = () => {
+                antrian = []; logs = []; tahapan = [];
+                tambahLog('Simulasi diulang.', 'gray');
+                render();
+            };
+
+            const tambahLog = (pesan, warna) => {
+                const timestamp = new Date().toLocaleTimeString('id-ID');
+                const warnaTeks = { green: 'text-green-600', purple: 'text-purple-600', red: 'text-red-600', yellow: 'text-yellow-600', gray: 'text-gray-500', pink: 'text-pink-600' };
+                logs.unshift({ timestamp, pesan, warna: warnaTeks[warna] || 'text-slate-600' });
+                if (logs.length > 10) logs.pop();
+                renderLog();
+            };
+
+            const triggerConfetti = () => {
+                for (let i = 0; i < 50; i++) {
+                    const confetti = document.createElement('div');
+                    confetti.classList.add('confetti');
+                    const colors = ['#db2777', '#c026d3', '#9333ea', '#f472b6', '#a78bfa'];
+                    confetti.style.left = Math.random() * 100 + 'vw';
+                    confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.animationDelay = Math.random() * 0.5 + 's';
+                    document.body.appendChild(confetti);
+                    setTimeout(() => confetti.remove(), 3000);
+                }
+            };
+
+            // Bagian RENDER
+            const renderDaftarKelompok = () => {
+                daftarKelompokEl.innerHTML = '';
+                const kelompokDiAntrianIds = antrian.map(k => k.id);
+                const kelompokTersedia = semuaKelompok.filter(k => !kelompokDiAntrianIds.includes(k.id));
+
+                if (kelompokTersedia.length === 0) {
+                    daftarKelompokEl.innerHTML = `<p class="text-slate-400 text-center italic mt-4">Semua kelompok sudah masuk.</p>`;
+                } else {
+                    kelompokTersedia.forEach(kelompok => {
+                        const card = document.createElement('div');
+                        card.className = 'card bg-slate-100 p-3 shadow-sm border border-slate-200 cursor-grab active:cursor-grabbing';
+                        card.draggable = true;
+                        card.dataset.id = kelompok.id;
+                        card.innerHTML = `<div><h3 class="font-bold text-slate-800">${kelompok.nama}</h3><p class="text-xs text-slate-500">${kelompok.anggota.join(', ')}</p></div>`;
+                        daftarKelompokEl.appendChild(card);
+                    });
+                }
+            };
+
+            const renderAntrian = () => {
+                antrianVisualEl.innerHTML = '';
+                queueCounterEl.textContent = `${antrian.length} / ${MAX_QUEUE_SIZE}`;
+                if (antrian.length === MAX_QUEUE_SIZE) {
+                    queueCounterEl.classList.add('bg-red-200', 'text-red-800');
+                    queueCounterEl.classList.remove('bg-pink-200', 'text-pink-800');
+                } else {
+                    queueCounterEl.classList.remove('bg-red-200', 'text-red-800');
+                    queueCounterEl.classList.add('bg-pink-200', 'text-pink-800');
+                }
+
+                if (antrian.length === 0) {
+                    antrianVisualEl.innerHTML = `<p class="text-slate-400 text-center italic mt-4">Area Antrian.<br>Lepaskan kelompok di sini.</p>`;
+                } else {
+                    antrian.forEach((kelompok, index) => {
+                        const isFirst = index === 0;
+                        const isLast = index === antrian.length - 1;
+
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'relative px-24';
+
+                        let pointersHTML = '';
+                        if (isFirst) {
+                            pointersHTML += `<div class="absolute left-0 top-1/2 -translate-y-1/2 font-bold text-purple-600 text-sm">FRONT ➔</div>`;
+                        }
+                        if (isLast) {
+                            pointersHTML += `<div class="absolute right-0 top-1/2 -translate-y-1/2 font-bold text-pink-600 text-sm">➔ REAR</div>`;
+                        }
+                        
+                        const card = document.createElement('div');
+                        card.className = `p-4 rounded-xl shadow transition-all ${isFirst ? 'bg-fuchsia-100 border-2 border-fuchsia-400' : 'bg-white border'}`;
+                        const labelText = "🎤 MAJU BERIKUTNYA";
+                        card.innerHTML = `<div class="flex items-center space-x-3"><span class="text-2xl font-bold ${isFirst ? 'text-fuchsia-600' : 'text-slate-400'}">${index + 1}</span><div><h3 class="font-bold text-slate-800">${kelompok.nama}</h3><p class="text-sm text-slate-600">"${kelompok.judul}"</p>${isFirst ? `<span class="text-xs font-bold text-fuchsia-600 bg-fuchsia-200 px-2 py-1 rounded-full mt-1 inline-block">${labelText}</span>` : ''}</div></div>`;
+                        
+                        wrapper.innerHTML = pointersHTML;
+                        wrapper.appendChild(card);
+                        antrianVisualEl.appendChild(wrapper);
+                    });
+                }
+            };
+            
+            const renderTahapan = () => {
+                tahapanContainerEl.innerHTML = '';
+                 if (tahapan.length === 0) {
+                    tahapanContainerEl.innerHTML = `<p class="text-slate-400 text-center italic mt-4">Belum ada aktivitas. Mulai dengan menyeret kelompok.</p>`;
+                    return;
+                }
+                tahapan.forEach((langkah, index) => {
+                    const stepEl = document.createElement('div');
+                    const isEnqueue = langkah.aksi === 'ENQUEUE';
+                    const stepClass = isEnqueue ? 'step-enqueue' : 'step-dequeue';
+                    stepEl.className = `step-card ${stepClass}`;
+                    
+                    let queueItemsHTML = langkah.antrianSaatIni.map((kel, i) => {
+                        let labels = '';
+                        if (i === 0) labels += `<div class="front-label">FRONT</div>`;
+                        if (i === langkah.antrianSaatIni.length - 1) labels += `<div class="rear-label">REAR</div>`;
+                        return `<div class="queue-item" style="position: relative; padding-top: 10px;">${labels}${kel.nama}</div>`;
+                    }).join('');
+                    
+                    if (langkah.antrianSaatIni.length === 0) {
+                        queueItemsHTML = '<div class="italic text-slate-500">Kosong</div>';
+                    }
+                    
+                    stepEl.innerHTML = `
+                        <div class="mr-4 text-2xl font-bold text-slate-300">${index + 1}</div>
+                        <div>
+                            <p class="font-bold text-lg text-fuchsia-800">${langkah.aksi}</p>
+                            <p class="text-slate-600">${langkah.deskripsi}</p>
+                            <div class="queue-snapshot">
+                                <span class="font-semibold mr-2 text-slate-500">Kondisi Antrian:</span>
+                                ${queueItemsHTML}
+                            </div>
+                        </div>
+                    `;
+                    tahapanContainerEl.appendChild(stepEl);
+                });
+            };
+
+            const renderLog = () => {
+                logAktivitasEl.innerHTML = logs.map(log => `<div class="${log.warna}"><span class="font-semibold">[${log.timestamp}]</span> ${log.pesan}</div>`).join('');
+            };
+
+            const render = () => {
+                renderDaftarKelompok();
+                renderAntrian();
+                renderLog();
+                renderTahapan();
+            };
+
+            // Event Listeners
+            btnDequeue.addEventListener('click', dequeue);
+            btnPeek.addEventListener('click', peek);
+            btnReset.addEventListener('click', resetSimulasi);
+            btnCloseModal.addEventListener('click', () => {
+                warningModal.classList.add('hidden');
+                warningModal.classList.remove('flex');
+            });
+            
+            daftarKelompokEl.addEventListener('dragstart', (e) => {
+                if (e.target.classList.contains('card')) {
+                    draggedItemId = parseInt(e.target.dataset.id);
+                    setTimeout(() => e.target.classList.add('dragging'), 0);
+                }
+            });
+            daftarKelompokEl.addEventListener('dragend', (e) => {
+                if (e.target.classList.contains('card')) e.target.classList.remove('dragging');
+            });
+            antrianVisualEl.addEventListener('dragover', (e) => { e.preventDefault(); antrianVisualEl.classList.add('drag-over'); });
+            antrianVisualEl.addEventListener('dragleave', () => { antrianVisualEl.classList.remove('drag-over'); });
+            antrianVisualEl.addEventListener('drop', (e) => {
+                e.preventDefault();
+                antrianVisualEl.classList.remove('drag-over');
+                if (draggedItemId) {
+                    enqueue(draggedItemId);
+                    draggedItemId = null;
+                }
+            });
+
+            // Inisialisasi
+            tambahLog('Sistem berhasil dimuat. Selamat datang!', 'gray');
+            render();
+        });
+    </script>
+</body>
+</html>
+
